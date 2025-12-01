@@ -189,9 +189,13 @@
     <script type="module">
         // Global Constants
         const GEMINI_MODEL = "gemini-2.5-flash-preview-09-2025";
-        // REMOVED API_KEY usage from client-side for security and CORS compliance in hosted environments.
-        // Use a proxy server (e.g., /api/gemini-proxy) to handle the API key securely.
-        const API_URL = "/api/gemini-proxy"; 
+        
+        // TEMPORARY FIX: Reverting to the direct Google API endpoint format.
+        // This relies on the environment (Canvas) injecting the API Key. 
+        // If hosted on Wix, this will likely lead to a CORS error, but confirms 
+        // all internal logic (excluding proxy configuration) is correct.
+        const API_KEY = ""; 
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${API_KEY}`;
         const MAX_RETRIES = 5;
 
         // --- TEMPLATES ---
@@ -529,11 +533,11 @@ Classification and Justification:`;
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
                 systemInstruction: { parts: [{ text: systemPrompt }] },
-                // Add model property for proxy to identify target model
-                model: GEMINI_MODEL 
+                // Removed the model property here as it's added to the URL for direct API call
             };
 
             try {
+                // NOTE: Using the API_URL defined globally which now includes the API Key
                 const response = await fetchWithBackoff(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -559,8 +563,8 @@ Classification and Justification:`;
                 }
             } catch (error) {
                 console.error('Classification Error:', error);
-                // Modified error message for better external hosting diagnostics
-                showAlert(`API Request failed. This is likely due to CORS/network security policies in Wix. You must configure a proxy server at ${API_URL}. Details: ${error.message}`, 'error');
+                // Updated error message to reflect the expected CORS error when hitting the direct API in Wix
+                showAlert(`API Request failed. Due to Wix/browser security restrictions (CORS), you must use a proxy server. Please update API_URL to your deployed proxy. Details: ${error.message}`, 'error');
             } finally {
                 toggleLoading(false);
             }
@@ -658,6 +662,7 @@ Classification and Justification:`;
                 let calculationJustification = 'The sample size was estimated based on pilot data and previous literature.';
 
                 try {
+                    // NOTE: Using the API_URL defined globally which now includes the API Key
                     const calcResponse = await fetchWithBackoff(API_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -732,6 +737,7 @@ Classification and Justification:`;
             };
             
             try {
+                // NOTE: Using the API_URL defined globally which now includes the API Key
                 const response = await fetchWithBackoff(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -748,7 +754,7 @@ Classification and Justification:`;
                 }
             } catch (error) {
                 console.error('Generation Error:', error);
-                showAlert(`An error occurred during document generation. This is likely due to CORS/network security policies in Wix. You must configure a proxy server at ${API_URL}. Details: ${error.message}`, 'error');
+                showAlert(`An error occurred during document generation. Due to Wix/browser security restrictions (CORS), you must use a proxy server. Please update API_URL to your deployed proxy. Details: ${error.message}`, 'error');
             } finally {
                 toggleLoading(false);
             }
