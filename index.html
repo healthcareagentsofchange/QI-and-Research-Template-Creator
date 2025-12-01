@@ -544,7 +544,8 @@ Classification and Justification:`;
                 }
             } catch (error) {
                 console.error('Classification Error:', error);
-                showAlert('An error occurred during classification. Check console for details.', 'error');
+                // Modified error message for better external hosting diagnostics
+                showAlert('API Request failed. This may be due to a CORS policy, network issue, or missing API key in your hosting environment (Wix). Please check the browser console (Network/Security tabs) for details.', 'error');
             } finally {
                 toggleLoading(false);
             }
@@ -711,7 +712,7 @@ Classification and Justification:`;
             
             const payload = {
                 contents: [{ parts: [{ text: userPrompt }] }],
-                systemInstruction: { parts: [{ text: finalSystemPrompt }] },
+                systemInstruction: { parts: [{ text: finalSystemPrompt }] } // Fixed: Removed extraneous ']'
             };
             
             try {
