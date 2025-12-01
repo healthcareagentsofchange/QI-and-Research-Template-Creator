@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Protocol & QI Application Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary-blue': '#104e8b',
+                        'secondary-gold': '#ffc324',
+                        'light-gray': '#f5f7fa',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        .card-shadow {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .header-bg {
+            background-color: #104e8b;
+            background-image: linear-gradient(135deg, #104e8b 0%, #0c7b93 100%);
+        }
+        .loading-animation {
+            border-top: 4px solid #ffc324;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .field-group {
+            border: 1px solid #ddd;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body class="bg-light-gray min-h-screen flex flex-col font-sans">
+
+    <!-- Header -->
+    <header class="header-bg text-white p-6 shadow-lg">
+        <div class="max-w-4xl mx-auto">
+            <h1 class="text-3xl font-bold tracking-tight">Protocol Assistant</h1>
+            <p class="text-primary-blue-200 mt-1">Classify your project, analyze power, and generate your IRB Protocol or QI Application.</p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow p-4 md:p-8">
+        <div class="max-w-4xl mx-auto">
+            
+            <!-- Classification Section -->
+            <section id="classification-section" class="bg-white p-6 rounded-xl card-shadow mb-8">
+                <h2 class="text-xl font-semibold text-primary-blue mb-4 border-b pb-2">Step 1: Project Classification (QI vs. Research)</h2>
+                <div id="classification-questions">
+                    <p class="mb-4 text-gray-600">Please describe your project's starting point and method used. The AI will analyze this information, based on the provided classification chart, to determine if your project is Quality Improvement (QI) or Research.</p>
+                    
+                    <div class="mb-4">
+                        <label for="project-goal" class="block text-sm font-medium text-gray-700 mb-1">1. What is the **starting point** or the gap your project addresses?</label>
+                        <textarea id="project-goal" rows="3" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold" placeholder="E.g., We have a gap in adherence to the new sepsis screening process (Practice/Process Gap) OR We need to generate new knowledge about delirium prevalence (Knowledge Gap)."></textarea>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="project-method" class="block text-sm font-medium text-gray-700 mb-1">2. What **method** are you using?</label>
+                        <textarea id="project-method" rows="3" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold" placeholder="E.g., We are using Plan-Do-Study-Act (PDSA) cycles OR We are using a randomized controlled trial and statistical analysis (Scientific Process)."></textarea>
+                    </div>
+
+                    <button id="classify-button" class="w-full sm:w-auto bg-primary-blue text-white py-2 px-6 rounded-lg font-semibold hover:bg-opacity-90 transition duration-150">
+                        Classify Project
+                    </button>
+                </div>
+                
+                <div id="classification-result" class="mt-6 hidden">
+                    <h3 class="text-lg font-bold">Classification Result:</h3>
+                    <p id="classification-output" class="p-4 rounded-lg bg-light-gray border mt-2"></p>
+                    <button id="continue-button" class="mt-4 bg-secondary-gold text-primary-blue py-2 px-6 rounded-lg font-semibold hover:bg-yellow-500 transition duration-150">
+                        Continue to Application
+                    </button>
+                </div>
+
+            </section>
+
+            <!-- Loading Indicator -->
+            <div id="loading-indicator" class="hidden flex justify-center items-center p-8">
+                <div class="loading-animation"></div>
+                <span class="ml-4 text-primary-blue font-medium">Processing... Please wait.</span>
+            </div>
+
+            <!-- Form Section (Hidden until classified) -->
+            <section id="protocol-form-section" class="bg-white p-6 rounded-xl card-shadow hidden">
+                <h2 id="form-title" class="text-xl font-semibold text-primary-blue mb-4 border-b pb-2"></h2>
+                <form id="protocol-form">
+                    <!-- Form content will be injected here by JavaScript -->
+                    <div id="form-inputs"></div>
+                    
+                    <button type="button" id="generate-button" class="w-full mt-6 bg-primary-blue text-white py-3 px-6 rounded-lg font-semibold hover:bg-opacity-90 transition duration-150">
+                        Generate Full Protocol/Application
+                    </button>
+                </form>
+            </section>
+
+            <!-- Power Analysis Section (Research only, appears before final generation) -->
+            <section id="power-analysis-section" class="bg-white p-6 rounded-xl card-shadow mt-8 hidden">
+                <h2 class="text-xl font-semibold text-primary-blue mb-4 border-b pb-2">Step 2b: Power Analysis & Statistics</h2>
+                <p class="mb-4 text-gray-600">Please provide the necessary statistical details to calculate your required sample size and design your data analysis plan.</p>
+                <div id="power-analysis-inputs">
+                    <!-- Inputs for power analysis -->
+                    <div class="mb-4">
+                        <label for="primary-endpoint-type" class="block text-sm font-medium text-gray-700 mb-1">1. Primary Endpoint/Outcome Type:</label>
+                        <select id="primary-endpoint-type" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold">
+                            <option value="">Select Primary Endpoint Type</option>
+                            <option value="Continuous (e.g., Blood Pressure, Score)">Continuous (e.g., Blood Pressure, Score)</option>
+                            <option value="Dichotomous (e.g., Success/Failure, Yes/No)">Dichotomous (e.g., Success/Failure, Yes/No)</option>
+                            <option value="Time-to-Event (e.g., Survival)">Time-to-Event (e.g., Survival)</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="effect-size-justification" class="block text-sm font-medium text-gray-700 mb-1">2. Justification/Assumption for Expected Effect Size:</label>
+                        <textarea id="effect-size-justification" rows="2" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold" placeholder="E.g., Based on previous literature (Smith et al. 2020), we expect a difference of 5 points on the primary scale (SD=10) or a 10% improvement in success rate (from 60% to 70%)." required></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label for="power-level" class="block text-sm font-medium text-gray-700 mb-1">3. Desired Power Level (e.g., 0.80 for 80%):</label>
+                        <input type="number" step="0.05" id="power-level" value="0.80" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="alpha-level" class="block text-sm font-medium text-gray-700 mb-1">4. Significance Level (Alpha, e.g., 0.05):</label>
+                        <input type="number" step="0.01" id="alpha-level" value="0.05" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="analysis-type" class="block text-sm font-medium text-gray-700 mb-1">5. Proposed Primary Statistical Analysis Method:</label>
+                        <textarea id="analysis-type" rows="2" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold" placeholder="E.g., Independent samples t-test, Chi-square test, ANOVA, Cox Regression." required></textarea>
+                    </div>
+
+                    <button id="calculate-and-generate-button" class="w-full mt-4 bg-primary-blue text-white py-3 px-6 rounded-lg font-semibold hover:bg-opacity-90 transition duration-150">
+                        Calculate Sample Size & Generate Full Protocol
+                    </button>
+                </div>
+            </section>
+
+            <!-- Output Section -->
+            <section id="output-section" class="bg-white p-6 rounded-xl card-shadow mt-8 hidden">
+                <h2 class="text-xl font-semibold text-primary-blue mb-4 border-b pb-2">Step 3: Generated Document</h2>
+                <textarea id="generated-output" rows="20" readonly class="w-full p-4 border border-gray-300 rounded-lg bg-light-gray font-mono text-sm"></textarea>
+                <div class="mt-4 flex flex-col sm:flex-row gap-4">
+                    <button id="download-button" class="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-green-700 transition duration-150">
+                        Download as Word Document (.doc)
+                    </button>
+                    <button id="copy-button" class="flex-1 bg-gray-500 text-white py-2 px-4 rounded-lg font-semibold hover:bg-gray-600 transition duration-150">
+                        Copy to Clipboard
+                    </button>
+                </div>
+            </section>
+
+             <!-- Error/Alert Box -->
+            <div id="error-alert" class="hidden mt-4 p-4 text-sm font-medium rounded-lg" role="alert"></div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-200 text-gray-600 p-4 text-center text-sm">
+        <p>Powered by Gemini API</p>
+    </footer>
+
+    <script type="module">
+        // Global Constants
+        const GEMINI_MODEL = "gemini-2.5-flash-preview-09-2025";
+        const API_KEY = ""; // Canvas will inject API Key at runtime if left blank
+        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${API_KEY}`;
+        const MAX_RETRIES = 5;
+
+        // --- TEMPLATES ---
+        const researchTemplate = `PROTOCOL TITLE: {PROTOCOL TITLE}
+PRINCIPAL INVESTIGATOR: {PRINCIPAL INVESTIGATOR}
+VERSION DATE: {VERSION DATE}
+ 
+STUDY SUMMARY:
+Investigational Agent(s) (Drugs or Devices): {INVESTIGATIONAL AGENT}
+IND / IDE / HDE #: {IND / IDE / HDE #}
+Special Population(s): {SPECIAL POPULATIONS_SUMMARY}
+Sample Size: {SAMPLE SIZE}
+Funding Source: {FUNDING SOURCE}
+Type of consent to be obtained: {CONSENT_TYPE_SUMMARY}
+Site: {SITE TYPE}
+Research Related Radiation Exposure: {RADIATION EXPOSURE}
+DSMB / DMC / IDMC: {DSMB / DMC / IDMC}
+
+OBJECTIVES:
+{OBJECTIVES}
+
+BACKGROUND:
+Introduction: {INTRODUCTION}
+Relevant Literature & Data (10-20 key references): {LITERATURE AND DATA}
+
+STUDY ENDPOINTS:
+Primary and Secondary Endpoints: {STUDY ENDPOINTS}
+
+PROCEDURES INVOLVED:
+Study Design & Procedures: {STUDY PROCEDURES}
+Source Records: {SOURCE RECORDS}
+
+DATA MANAGEMENT AND CONFIDENTIALITY:
+Data Analysis Plan, Statistical Procedures, and Power Analysis:
+{DATA_ANALYSIS_PLAN}
+Data Security/Storage: {DATA SECURITY AND STORAGE}
+
+RISKS TO PARTICIPANTS:
+Foreseeable Risks: {RISKS}
+
+POTENTIAL BENEFITS TO PARTICIPANTS:
+Benefits: {BENEFITS}
+
+CONSENT PROCESS:
+Consent Details: {CONSENT PROCESS DETAILS}
+Consent Type Selection: {CONSENT_TYPE_SELECTION}
+
+WAIVER OR ALTERATION OF CONSENT PROCESS (If applicable):
+Vulnerable Populations & Consent Justification: {VULNERABLE_POPULATION_DETAILS}
+
+PROTECTED HEALTH INFORMATION (PHI AND HIPAA):
+PHI/HIPAA Use: {PHI_HIPAA_USE_SELECTION}
+
+[End of Protocol Content]`;
+
+        const qiTemplate = `IdentiFy (PDSA Phase 1 - Identify the problem):
+Problem Definition (use data to quantify the problem): {PROBLEM DEFINITION}
+Stakeholders: {STAKEHOLDERS}
+Authority Level: {AUTHORITY_LEVEL_SELECTION}
+Delegation Level: {DELEGATION_LEVEL_SELECTION}
+Project Overview:
+Project location: {PROJECT LOCATION}
+Project Name: {PROJECT NAME}
+Project Chair: {PROJECT CHAIR}
+Project Co-Chair: {PROJECT CO_CHAIR}
+Executive Sponsor: {EXECUTIVE SPONSOR}
+Root Cause and Gap Analysis: {ROOT CAUSE AND GAP ANALYSIS}
+
+Plan (PDSA Phase 2 - Plan the improvement):
+Aim Statement (SMART Goal): {AIM STATEMENT}
+Intervention: {INTERVENTION}
+Implementation Plan: {IMPLEMENTATION PLAN}
+Process Measures: {PROCESS MEASURES}
+
+Do (PDSA Phase 3 - Implement the plan):
+Timeline: {TIMELINE}
+Resources: {RESOURCES}
+
+Study (PDSA Phase 4 - Study the results):
+Data Collection: {DATA COLLECTION}
+Analysis: {ANALYSIS}
+
+Act (PDSA Phase 5 - Act on the results):
+Adjustments (Hypothetical if incomplete): {ADJUSTMENTS}
+Spread and Sustainability (Hypothetical if incomplete): {SPREAD AND SUSTAINABILITY}
+
+Other Considerations:
+Team Collaboration: {TEAM COLLABORATION}
+Design Approach (Patient-centered, Quadruple Aim/IOM Six Domains): {DESIGN APPROACH}
+PHI (Data Management and Protection Plan): {PHI PLAN}
+
+[End of QI Application Content]`;
+
+        // --- FIELD DEFINITIONS ---
+        // Research Fields (ID, Label, Type/Options, Placeholder/Required)
+        const researchFields = [
+            ['protocol-title', 'Protocol Title', 'textarea', 'A full, descriptive title for the research study.'],
+            ['principal-investigator', 'Principal Investigator', 'textarea', 'Full Name and Affiliation.'],
+            ['version-date', 'Version Date', 'date', ''], // Type 'date' is handled separately for prefill
+            ['study-procedures', 'Study Design & Procedures', 'textarea', 'Describe all research procedures, including data collection and standard of care vs. research-related actions.'],
+            ['risks', 'Foreseeable Risks to Participants', 'textarea', 'Describe physical, psychological, social, or legal risks, including probability and magnitude.'],
+            ['benefits', 'Potential Benefits to Participants', 'textarea', 'Describe direct benefits (if any). Do not include societal benefits.'],
+            ['objectives', 'Study Objectives (Precise/Key)', 'textarea', 'E.g., The purpose is to determine the efficacy of Drug X compared to placebo in reducing symptom Y.'],
+            ['introduction', 'Background Introduction (Setting & Rationale)', 'textarea', 'Brief paragraph on the clinical need and study setting.'],
+            ['funding-source', 'Funding Source', 'textarea', 'E.g., NIH Grant, Internal Department Funds, None.'],
+            ['investigational-agent', 'Investigational Agent(s) (Drugs or Devices)', 'textarea', 'If none, state "N/A."'],
+            ['ind-ide-hde', 'IND / IDE / HDE #', 'text', 'If none, state "N/A."'],
+            ['study-endpoints', 'Primary and Secondary Endpoints', 'textarea', 'Clearly define the measured outcomes.'],
+            ['source-records', 'Source Records/Data Collection', 'textarea', 'Specify what records (EMR, survey, etc.) are used.'],
+            ['data-security-storage', 'Data Security/Storage', 'textarea', 'Describe how data is secured (encryption, password, location).'],
+            ['consent-process-details', 'Consent Discussion Details', 'textarea', 'Describe where, by whom, and how the discussion takes place.'],
+            
+            // Structured Inputs for regulatory compliance
+            ['vulnerable-population-details', 'Vulnerable Population Details (If applicable)', 'textarea', 'If including any special population, explain the rationale and additional safeguards here.'],
+            ['special-populations', 'Special Populations (Select all that apply)', 'checkbox', ['Children', 'Adults Unable to Consent', 'Prisoners', 'Students/Employees']],
+            ['consent-type', 'Type of Consent to be Obtained', 'select', ['Written', 'Verbal/Waiver of Documentation of Informed Consent', 'Waiver/Alteration of Consent Process', 'No Consent']],
+            ['phi-hipaa-use', 'PHI & HIPAA Use', 'select', ['HIPAA Authorization will be obtained', 'Waiver of HIPAA Authorization requested', 'HIPAA does not apply']],
+            ['radiation-exposure', 'Research Related Radiation Exposure', 'select', ['Yes', 'No']],
+            ['dsmb-dmc-idmc', 'DSMB / DMC / IDMC', 'select', ['Yes', 'No']],
+        ];
+
+        // QI Fields (ID, Label, Type/Options, Placeholder/Required)
+        const qiFields = [
+            ['project-name', 'Project Name', 'textarea', 'A concise, action-oriented name for the QI initiative.'],
+            ['project-chair', 'Project Chair/Leader', 'textarea', 'Full Name and Title.'],
+            ['executive-sponsor', 'Executive Sponsor', 'textarea', 'Name, Title (e.g., Unit Manager, CNE).'],
+            ['project-location', 'Project Location/Unit', 'textarea', 'Where the improvement will be implemented.'],
+            ['problem-definition', 'Problem Definition (Quantified)', 'textarea', 'Clearly articulate the problem using data. E.g., Fall rate on Unit X is 4.5 per 1000 patient-days.'],
+            ['aim-statement', 'Aim Statement (SMART Goal)', 'textarea', 'E.g., Reduce the fall rate on Unit X by 50% (from 4.5 to 2.25) within six months.'],
+            ['intervention', 'Proposed Intervention(s) and Reasoning', 'textarea', 'What specific changes will be implemented? Include rationale and supporting evidence/references (at least 5).'],
+            ['timeline', 'Project Timeline', 'textarea', 'Start and end dates for the PDSA cycles.'],
+            ['resources', 'Resources Required (Financial, Human, Tech)', 'textarea', 'What is needed for implementation? Provide evidence of stakeholder support.'],
+            ['phi-plan', 'PHI Usage and Data Protection Plan', 'textarea', 'Are you collecting PHI? If so, describe access, storage, retention, and destruction.'],
+            ['stakeholders', 'Stakeholders and Engagement', 'textarea', 'Who are the primary interdisciplinary stakeholders involved and how have they been engaged?'],
+            ['analysis', 'Data Collection and Analysis Plan (Study Phase)', 'textarea', 'How will you collect and analyze data to address your aims?'],
+            ['adjustments', 'Act Phase: Adjustments/Criteria', 'textarea', 'How will results guide decisions to scale, modify, or abandon?'],
+            ['spread-and-sustainability', 'Act Phase: Spread and Sustainability', 'textarea', 'Plan to spread improvements and ensure sustainability.'],
+            
+            // Structured Inputs for QI Governance
+            ['authority-level', 'Authority Level (Executive Sponsor Guided)', 'select', ['Act from Instruction', 'Act After Approval', 'Decide, Inform & Act', 'Decide and Act']],
+            ['delegation-level', 'Delegation Level (Executive Sponsor Guided)', 'select', ['Assess & Report', 'Research & Report', 'Research & Recommend', 'Decide & Inform', 'Full Delegation']],
+        ];
+
+
+        let projectType = ''; // 'Research' or 'QI'
+        let researchData = {}; // Cache data for multi-step form
+
+        // --- CORE UTILITY FUNCTIONS ---
+
+        async function fetchWithBackoff(url, options) {
+            for (let i = 0; i < MAX_RETRIES; i++) {
+                try {
+                    const response = await fetch(url, options);
+                    if (!response.ok) {
+                        const errorBody = await response.text();
+                        console.error('API Error:', response.status, errorBody);
+                        throw new Error(`API call failed with status ${response.status}`);
+                    }
+                    return await response.json();
+                } catch (error) {
+                    if (i === MAX_RETRIES - 1) {
+                        throw error;
+                    }
+                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
+                    console.warn(`Attempt ${i + 1} failed. Retrying in ${delay.toFixed(0)}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+
+        function showAlert(message, type = 'info') {
+            const alertBox = document.getElementById('error-alert');
+            alertBox.textContent = message;
+            alertBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
+            
+            if (type === 'error') {
+                alertBox.classList.add('bg-red-100', 'text-red-700');
+            } else if (type === 'success') {
+                alertBox.classList.add('bg-green-100', 'text-green-700');
+            } else {
+                alertBox.classList.add('bg-blue-100', 'text-blue-700');
+            }
+
+            // Hide after 5 seconds
+            setTimeout(() => {
+                alertBox.classList.add('hidden');
+            }, 5000);
+        }
+
+        function toggleLoading(isLoading) {
+            const loading = document.getElementById('loading-indicator');
+            loading.classList.toggle('hidden', !isLoading);
+            
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(btn => {
+                if (btn.id === 'classify-button' || btn.id === 'generate-button' || btn.id === 'calculate-and-generate-button') {
+                    btn.disabled = isLoading;
+                }
+            });
+        }
+
+        // --- FORM BUILDING UTILITIES ---
+
+        /**
+         * Creates an input element based on the field definition.
+         */
+        function createInputField(id, label, type, optionsOrPlaceholder) {
+            let inputHtml = '';
+            let isRequired = true; // Assume required unless defined otherwise
+
+            if (type === 'textarea') {
+                inputHtml = `<textarea id="${id}" name="${id}" rows="3" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold" placeholder="${optionsOrPlaceholder}" ${isRequired ? 'required' : ''}></textarea>`;
+            } else if (type === 'text' || type === 'number') {
+                inputHtml = `<input type="${type}" id="${id}" name="${id}" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold" placeholder="${optionsOrPlaceholder}" ${isRequired ? 'required' : ''}>`;
+            } else if (type === 'date') {
+                 // Use simple text input for date since HTML date type has poor cross-browser support in some environments
+                inputHtml = `<input type="text" id="${id}" name="${id}" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold" placeholder="YYYY-MM-DD" value="${new Date().toISOString().split('T')[0]}" ${isRequired ? 'required' : ''}>`;
+            } else if (type === 'select') {
+                inputHtml = `<select id="${id}" name="${id}" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold" ${isRequired ? 'required' : ''}>
+                    <option value="">-- Select an option --</option>
+                    ${optionsOrPlaceholder.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                </select>`;
+            } else if (type === 'checkbox') {
+                inputHtml = optionsOrPlaceholder.map(opt => `
+                    <div class="flex items-center mt-2">
+                        <input id="${id}-${opt.toLowerCase().replace(/\s/g, '-')}" name="${id}" type="checkbox" value="${opt}" class="h-4 w-4 text-primary-blue border-gray-300 rounded focus:ring-secondary-gold">
+                        <label for="${id}-${opt.toLowerCase().replace(/\s/g, '-')}" class="ml-2 block text-sm text-gray-700">${opt}</label>
+                    </div>
+                `).join('');
+                isRequired = false; // Checkbox groups usually aren't strictly required
+            }
+            
+            const requiredMarker = isRequired ? '<span class="text-red-500">*</span>' : '';
+            
+            const div = document.createElement('div');
+            div.className = 'mb-4';
+            div.innerHTML = `
+                <label for="${id}" class="block text-sm font-medium text-gray-700 mb-1">${label} ${requiredMarker}</label>
+                ${inputHtml}
+            `;
+            return div;
+        }
+
+        /**
+         * Collects data from the dynamically generated form fields.
+         */
+        function collectFormData(fields) {
+            const data = {};
+            let isFormValid = true;
+
+            fields.forEach(([id, label, type]) => {
+                let value;
+                const element = document.getElementById(id);
+                
+                if (type === 'checkbox') {
+                    const checkedBoxes = Array.from(document.querySelectorAll(`input[name="${id}"]:checked`)).map(cb => cb.value);
+                    value = checkedBoxes.join('; ');
+                } else if (element) {
+                    value = element.value.trim();
+                } else {
+                    // Skip if element doesn't exist (e.g., if it's a conditional field)
+                    return;
+                }
+
+                data[id.toUpperCase().replace(/-/g, '_')] = value;
+
+                // Simple validation for required fields (textareas, selects, and text inputs)
+                if (type !== 'checkbox' && (element?.required && !value)) {
+                    isFormValid = false;
+                }
+            });
+
+            return { data, isFormValid };
+        }
+
+        // --- WORKFLOW FUNCTIONS ---
+
+        async function classifyProject() {
+            // (Same implementation as before)
+            const goal = document.getElementById('project-goal').value.trim();
+            const method = document.getElementById('project-method').value.trim();
+            
+            if (!goal || !method) {
+                showAlert('Please provide both a project goal and a method description for classification.', 'error');
+                return;
+            }
+
+            toggleLoading(true);
+
+            const systemPrompt = `You are an institutional review board (IRB) consultant. Your task is to classify a project as 'Research' or 'Quality Improvement (QI)' based on the user's description. Use the following criteria:
+1. QI: Starting Point is a 'Gap in performance, practice, process, or system'. Method Used is ID-PDSA. Outcome is 'Evidence for application at the local level'.
+2. Research: Starting Point is a 'Gap in knowledge/evidence'. Method Used is 'Scientific process'. Outcome is 'Generate new knowledge for broad application'.
+3. Evidence-Based Practice (EBP) is closer to QI for this classification.
+
+Your response must first state the classification ('Research' or 'QI') and then provide a brief, one-sentence justification based on the criteria.`;
+
+            const userQuery = `Project Description:
+Starting Point: ${goal}
+Method Used: ${method}
+Classification and Justification:`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: { parts: [{ text: systemPrompt }] },
+            };
+
+            try {
+                const response = await fetchWithBackoff(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) {
+                    const classificationOutput = text.trim();
+                    document.getElementById('classification-output').innerHTML = classificationOutput.replace(/\n/g, '<br>');
+                    document.getElementById('classification-result').classList.remove('hidden');
+
+                    if (classificationOutput.toLowerCase().includes('research')) {
+                        projectType = 'Research';
+                    } else if (classificationOutput.toLowerCase().includes('qi') || classificationOutput.toLowerCase().includes('quality improvement')) {
+                        projectType = 'QI';
+                    } else {
+                        projectType = 'QI';
+                        showAlert('Classification was ambiguous. Defaulting to Quality Improvement (QI).', 'info');
+                    }
+                } else {
+                    showAlert('Failed to get a classification response.', 'error');
+                }
+            } catch (error) {
+                console.error('Classification Error:', error);
+                showAlert('An error occurred during classification. Check console for details.', 'error');
+            } finally {
+                toggleLoading(false);
+            }
+        }
+
+        function startProtocolForm() {
+            document.getElementById('classification-section').classList.add('hidden');
+            document.getElementById('protocol-form-section').classList.remove('hidden');
+            document.getElementById('power-analysis-section').classList.add('hidden'); // Ensure power section is hidden
+            document.getElementById('form-inputs').innerHTML = '';
+
+            const titleElement = document.getElementById('form-title');
+            const formInputs = document.getElementById('form-inputs');
+            const fields = projectType === 'Research' ? researchFields : qiFields;
+
+            titleElement.textContent = projectType === 'Research' 
+                ? 'Step 2a: Research IRB Protocol Key Information' 
+                : 'Step 2: Quality Improvement Application Key Information (PDSA)';
+            
+            // Render inputs
+            fields.forEach(([id, label, type, optionsOrPlaceholder]) => {
+                formInputs.appendChild(createInputField(id, label, type, optionsOrPlaceholder));
+            });
+
+            // Adjust button based on project type
+            const generateButton = document.getElementById('generate-button');
+            const calculateButton = document.getElementById('calculate-and-generate-button');
+            
+            if (projectType === 'Research') {
+                // For research, the first 'Generate' button now moves to the Power Analysis section
+                generateButton.textContent = 'Continue to Sample Size Analysis';
+                generateButton.removeEventListener('click', generateProtocol);
+                generateButton.addEventListener('click', continueToPowerAnalysis);
+            } else {
+                // For QI, the button directly generates the protocol
+                generateButton.textContent = 'Generate Full QI Application';
+                generateButton.removeEventListener('click', continueToPowerAnalysis);
+                generateButton.addEventListener('click', generateProtocol);
+            }
+        }
+
+        function continueToPowerAnalysis() {
+            const result = collectFormData(researchFields);
+            if (!result.isFormValid) {
+                showAlert('Please fill in all required fields in Step 2a before continuing.', 'error');
+                return;
+            }
+            
+            // Cache the collected research data
+            researchData = result.data;
+
+            document.getElementById('protocol-form-section').classList.add('hidden');
+            document.getElementById('power-analysis-section').classList.remove('hidden');
+        }
+
+        async function generateProtocol() {
+            let data = {};
+            let docTitle = projectType === 'Research' ? 'IRB Protocol' : 'QI Application';
+            let baseTemplate = projectType === 'Research' ? researchTemplate : qiTemplate;
+            let finalSystemPrompt = '';
+            
+            if (projectType === 'Research') {
+                // --- Research Workflow: Collect Power Analysis Data ---
+                const powerData = collectFormData([
+                    ['primary-endpoint-type', 'Primary Endpoint Type', 'select', ''],
+                    ['effect-size-justification', 'Effect Size Justification', 'textarea', ''],
+                    ['power-level', 'Power Level', 'number', ''],
+                    ['alpha-level', 'Alpha Level', 'number', ''],
+                    ['analysis-type', 'Analysis Type', 'textarea', ''],
+                ]);
+
+                if (!powerData.isFormValid) {
+                    showAlert('Please complete all fields in the Power Analysis section.', 'error');
+                    return;
+                }
+                
+                // Merge initial research data with power analysis data
+                data = { ...researchData, ...powerData.data };
+
+                toggleLoading(true);
+
+                // --- AI Call for Sample Size Calculation ---
+                const calculationPrompt = `Perform a sample size calculation for a clinical research study. 
+                - Primary Endpoint Type: ${data.PRIMARY_ENDPOINT_TYPE}
+                - Justification/Assumption: ${data.EFFECT_SIZE_JUSTIFICATION}
+                - Desired Power: ${data.POWER_LEVEL}
+                - Significance Level (Alpha): ${data.ALPHA_LEVEL}
+                
+                Provide the estimated required sample size (N) based on your expert statistical judgment and justify the calculation. Use the following format for your response:
+                CALCULATED_N: [The estimated total number of participants needed]
+                CALCULATION_JUSTIFICATION: [Brief explanation of the statistical test and parameters used (e.g., Two-sample t-test, Cohen's d, assumed variance).]`;
+
+                let calculatedN = data.SAMPLE_SIZE || '100'; // Fallback if calculation fails or is skipped
+                let calculationJustification = 'The sample size was estimated based on pilot data and previous literature.';
+
+                try {
+                    const calcResponse = await fetchWithBackoff(API_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: calculationPrompt }] }], systemInstruction: { parts: [{ text: 'You are a clinical statistician. Do not output anything other than the CALCULATED_N and CALCULATION_JUSTIFICATION in the requested format.'}] }})
+                    });
+
+                    const calcText = calcResponse.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                    const nMatch = calcText.match(/CALCULATED_N:\s*(\d+)/i);
+                    const justMatch = calcText.match(/CALCULATION_JUSTIFICATION:\s*(.*)/i);
+
+                    if (nMatch && nMatch[1]) {
+                        calculatedN = nMatch[1];
+                        data.SAMPLE_SIZE = calculatedN; // Update data cache for final protocol
+                    }
+                    if (justMatch && justMatch[1]) {
+                        calculationJustification = justMatch[1].trim();
+                    }
+                } catch (error) {
+                    console.error('Sample size calculation failed, using fallback N.', error);
+                    showAlert('Warning: Automated sample size calculation failed. Using fallback N=100. Please manually verify in the generated document.', 'error');
+                    // Continue with generation using fallback
+                }
+
+                // Construct Data Analysis Plan field for the final protocol template
+                data.DATA_ANALYSIS_PLAN = `
+                Sample Size Justification: The target sample size of N=${data.SAMPLE_SIZE} was determined by a power analysis using a significance level (alpha) of ${data.ALPHA_LEVEL} and a desired power of ${data.POWER_LEVEL}. The analysis was based on the primary outcome measure (${data.PRIMARY_ENDPOINT_TYPE}) and the assumed effect size described in the background. Specifically: ${calculationJustification}.
+
+                Statistical Procedures: The primary statistical comparison will utilize the ${data.ANALYSIS_TYPE}. Secondary analyses will employ appropriate methods (e.g., descriptive statistics, logistic regression) to assess secondary endpoints. All data will be screened for normality and appropriate transformations or non-parametric tests will be applied as necessary.
+                `;
+
+                // Add summaries for multi-selects to template
+                data.SPECIAL_POPULATIONS_SUMMARY = data.SPECIAL_POPULATIONS || 'None';
+                data.CONSENT_TYPE_SUMMARY = data.CONSENT_TYPE || 'Written';
+                data.PHI_HIPAA_USE_SELECTION = data.PHI_HIPAA_USE || 'HIPAA Authorization will be obtained';
+                data.VULNERABLE_POPULATION_DETAILS = data.VULNERABLE_POPULATION_DETAILS || 'N/A';
+                
+                finalSystemPrompt = `You are a professional ${docTitle} writer. Your task is to take the provided research protocol template text, which now contains key user input and the full data analysis plan, and elaborate on the sections using professional, institutional language to create a complete, robust, and well-written ${docTitle} document.
+                - Ensure the Data Analysis Plan is integrated logically.
+                - If 'Children' or 'Adults Unable to Consent' were selected in SPECIAL_POPULATIONS_SUMMARY, ensure the 'WAIVER OR ALTERATION OF CONSENT PROCESS' section is fully detailed using VULNERABLE_POPULATION_DETAILS.
+                - Maintain the original section headers and structure exactly. Do not use any markdown formatting or introductory/concluding remarks. The output must be ONLY the fully expanded ${docTitle} text.`;
+
+
+            } else {
+                // --- QI Workflow: Collect Data ---
+                const result = collectFormData(qiFields);
+                if (!result.isFormValid) {
+                    showAlert('Please fill in all required fields for the QI Application.', 'error');
+                    return;
+                }
+                data = result.data;
+                toggleLoading(true);
+                
+                // Add summaries for multi-selects to template
+                data.AUTHORITY_LEVEL_SELECTION = data.AUTHORITY_LEVEL;
+                data.DELEGATION_LEVEL_SELECTION = data.DELEGATION_LEVEL;
+
+                finalSystemPrompt = `You are a professional Quality Improvement Application writer. Your task is to take the provided QI template text, which now contains key user input, and elaborate on the sections using professional, institutional language to create a complete, robust, and well-written QI Application document following the PDSA structure.
+                - Ensure the language is aligned with QI methodology (e.g., PDSA cycles, aim statements, process measures).
+                - Maintain the original section headers and structure exactly. Do not use any markdown formatting or introductory/concluding remarks. The output must be ONLY the fully expanded ${docTitle} text.`;
+            }
+            
+            // --- Final Protocol Generation ---
+            let userPrompt = baseTemplate;
+            for (const key in data) {
+                userPrompt = userPrompt.replace(new RegExp(`{${key.replace(/_/g, ' ')}}`, 'g'), data[key]);
+            }
+            
+            const payload = {
+                contents: [{ parts: [{ text: userPrompt }] }],
+                systemInstruction: { parts: [{ text: finalSystemPrompt }] },
+            };
+            
+            try {
+                const response = await fetchWithBackoff(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
+                if (text) {
+                    document.getElementById('generated-output').value = text.trim();
+                    document.getElementById('output-section').classList.remove('hidden');
+                    showAlert(`Successfully generated the full ${docTitle}! Review and edit the document.`, 'success');
+                } else {
+                    showAlert('Failed to generate the document content.', 'error');
+                }
+            } catch (error) {
+                console.error('Generation Error:', error);
+                showAlert('An error occurred during document generation. Check console for details.', 'error');
+            } finally {
+                toggleLoading(false);
+            }
+        }
+
+        function copyToClipboard(elementId) {
+            const textarea = document.getElementById(elementId);
+            textarea.select();
+            textarea.setSelectionRange(0, 99999);
+            try {
+                document.execCommand('copy');
+                showAlert('Copied generated document to clipboard!', 'success');
+            } catch (err) {
+                console.error('Could not copy text: ', err);
+                showAlert('Failed to copy. Please manually select and copy the text.', 'error');
+            }
+        }
+
+        function downloadAsDocx() {
+            const text = document.getElementById('generated-output').value;
+            if (!text) {
+                showAlert('No document content to download.', 'error');
+                return;
+            }
+
+            const docTitle = projectType === 'Research' ? 'IRB_Protocol' : 'QI_Application';
+            const filename = `${docTitle}_Generated_${new Date().toISOString().slice(0, 10)}.doc`;
+            
+            const blob = new Blob([text], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showAlert(`Downloaded '${filename}' successfully!`, 'success');
+        }
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const classifyButton = document.getElementById('classify-button');
+            const continueButton = document.getElementById('continue-button');
+            const generateButton = document.getElementById('generate-button'); // This button is repurposed by startProtocolForm
+            const calculateAndGenerateButton = document.getElementById('calculate-and-generate-button');
+            const copyButton = document.getElementById('copy-button');
+            const downloadButton = document.getElementById('download-button');
+
+            classifyButton.addEventListener('click', classifyProject);
+            continueButton.addEventListener('click', startProtocolForm);
+            
+            // Note: generateButton's event listener is set dynamically in startProtocolForm
+            calculateAndGenerateButton.addEventListener('click', generateProtocol);
+            copyButton.addEventListener('click', () => copyToClipboard('generated-output'));
+            downloadButton.addEventListener('click', downloadAsDocx);
+
+            document.getElementById('project-goal').focus();
+        });
+    </script>
+
+</body>
+</html>
