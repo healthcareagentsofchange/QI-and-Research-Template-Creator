@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Protocol & QI Application Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@google/genai@0.1.0/dist/client.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -188,16 +189,28 @@
 
     <script type="module">
         // Global Constants
-        const GEMINI_MODEL = "gemini-2.5-flash-preview-09-2025";
+        const GEMINI_MODEL = "gemini-2.5-flash"; // Using flash for speed/cost
         
-        // TEMPORARY FIX: Reverting to the direct Google API endpoint format.
-        // This relies on the environment (Canvas) injecting the API Key. 
-        // If hosted on Wix, this will likely lead to a CORS error, but confirms 
-        // all internal logic (excluding proxy configuration) is correct.
-        const API_KEY = ""; 
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${API_KEY}`;
-        const MAX_RETRIES = 5;
+        // CRITICAL: Insert your API Key here. This bypasses the need for an external proxy server.
+        // WARNING: This key is exposed in client-side code, which is LESS secure.
+        const CLIENT_API_KEY = "AIzaSyDotPdvHbLVAlEO2V1-8zfFmP3NVVg2qZ8"; 
 
+        // Initialize the Gemini client using the SDK
+        let gemini;
+        try {
+            if (!CLIENT_API_KEY || CLIENT_API_KEY.includes("YOUR_GEMINI_API_KEY_HERE")) {
+                 throw new Error("API Key not set. Please replace 'YOUR_GEMINI_API_KEY_HERE' in the code.");
+            }
+            gemini = new window.GoogleGenAI({ apiKey: CLIENT_API_KEY });
+        } catch (e) {
+            console.error("SDK Initialization Error:", e.message);
+            // Wait for DOM to load, then show error if key is missing
+            document.addEventListener('DOMContentLoaded', () => {
+                showAlert(`Initialization Error: ${e.message}`, 'error');
+                document.querySelectorAll('button').forEach(btn => btn.disabled = true);
+            });
+        }
+        
         // --- TEMPLATES ---
         const researchTemplate = `PROTOCOL TITLE: {PROTOCOL TITLE}
 PRINCIPAL INVESTIGATOR: {PRINCIPAL INVESTIGATOR}
@@ -344,39 +357,8 @@ PHI (Data Management and Protection Plan): {PHI PLAN}
         let researchData = {}; // Cache data for multi-step form
 
         // --- CORE UTILITY FUNCTIONS ---
-
-        async function fetchWithBackoff(url, options) {
-            for (let i = 0; i < MAX_RETRIES; i++) {
-                try {
-                    const response = await fetch(url, options);
-                    if (!response.ok) {
-                        // Attempt to read error message from body if available
-                        const errorBody = await response.text();
-                        console.error('API Error:', response.status, errorBody);
-                        
-                        // Throw a detailed error for better console diagnostics
-                        let errorMessage = `API call failed with status ${response.status}.`;
-                        if (errorBody) {
-                            try {
-                                const errorJson = JSON.parse(errorBody);
-                                errorMessage += ` Details: ${errorJson.error?.message || errorJson.error || errorBody}`;
-                            } catch {
-                                errorMessage += ` Response Body: ${errorBody.substring(0, 100)}...`;
-                            }
-                        }
-                        throw new Error(errorMessage);
-                    }
-                    return await response.json();
-                } catch (error) {
-                    if (i === MAX_RETRIES - 1) {
-                        throw error;
-                    }
-                    const delay = Math.pow(2, i) * 1000 + Math.random() * 1000;
-                    console.warn(`Attempt ${i + 1} failed. Retrying in ${delay.toFixed(0)}ms...`);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                }
-            }
-        }
+        
+        // Removed fetchWithBackoff as SDK handles retries/connection
 
         function showAlert(message, type = 'info') {
             const alertBox = document.getElementById('error-alert');
@@ -499,15 +481,15 @@ PHI (Data Management and Protection Plan): {PHI PLAN}
             projectType = ''; // Reset project type
             researchData = {}; // Clear cached data
             
-            // Optionally clear classification inputs if user needs to start fresh
-            // document.getElementById('project-goal').value = '';
-            // document.getElementById('project-method').value = '';
-
             document.getElementById('project-goal').focus();
         }
 
         async function classifyProject() {
-            // (Same implementation as before)
+            if (!gemini) {
+                showAlert("API Initialization Error: Please check console for details (API Key likely missing).", 'error');
+                return;
+            }
+            
             const goal = document.getElementById('project-goal').value.trim();
             const method = document.getElementById('project-method').value.trim();
             
@@ -530,21 +512,16 @@ Starting Point: ${goal}
 Method Used: ${method}
 Classification and Justification:`;
 
-            const payload = {
-                contents: [{ parts: [{ text: userQuery }] }],
-                systemInstruction: { parts: [{ text: systemPrompt }] },
-                // Removed the model property here as it's added to the URL for direct API call
-            };
-
             try {
-                // NOTE: Using the API_URL defined globally which now includes the API Key
-                const response = await fetchWithBackoff(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                const response = await gemini.generateContent({
+                    model: GEMINI_MODEL,
+                    contents: [{ role: "user", parts: [{ text: userQuery }] }],
+                    config: {
+                        systemInstruction: systemPrompt
+                    }
                 });
 
-                const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
+                const text = response.text;
                 if (text) {
                     const classificationOutput = text.trim();
                     document.getElementById('classification-output').innerHTML = classificationOutput.replace(/\n/g, '<br>');
@@ -563,8 +540,7 @@ Classification and Justification:`;
                 }
             } catch (error) {
                 console.error('Classification Error:', error);
-                // Updated error message to reflect the expected CORS error when hitting the direct API in Wix
-                showAlert(`API Request failed. Due to Wix/browser security restrictions (CORS), you must use a proxy server. Please update API_URL to your deployed proxy. Details: ${error.message}`, 'error');
+                showAlert(`API Request Failed: Check your console for details, specifically network errors or invalid API key configuration.`, 'error');
             } finally {
                 toggleLoading(false);
             }
@@ -622,6 +598,11 @@ Classification and Justification:`;
         }
 
         async function generateProtocol() {
+            if (!gemini) {
+                showAlert("API Initialization Error: Please check console for details (API Key likely missing).", 'error');
+                return;
+            }
+
             let data = {};
             let docTitle = projectType === 'Research' ? 'IRB Protocol' : 'QI Application';
             let baseTemplate = projectType === 'Research' ? researchTemplate : qiTemplate;
@@ -662,14 +643,15 @@ Classification and Justification:`;
                 let calculationJustification = 'The sample size was estimated based on pilot data and previous literature.';
 
                 try {
-                    // NOTE: Using the API_URL defined globally which now includes the API Key
-                    const calcResponse = await fetchWithBackoff(API_URL, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ contents: [{ parts: [{ text: calculationPrompt }] }], systemInstruction: { parts: [{ text: 'You are a clinical statistician. Do not output anything other than the CALCULATED_N and CALCULATION_JUSTIFICATION in the requested format.'}] }, model: GEMINI_MODEL})
+                    const calcResponse = await gemini.generateContent({
+                        model: GEMINI_MODEL,
+                        contents: [{ role: "user", parts: [{ text: calculationPrompt }] }],
+                        config: {
+                            systemInstruction: 'You are a clinical statistician. Do not output anything other than the CALCULATED_N and CALCULATION_JUSTIFICATION in the requested format.'
+                        }
                     });
 
-                    const calcText = calcResponse.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                    const calcText = calcResponse.text || '';
                     const nMatch = calcText.match(/CALCULATED_N:\s*(\d+)/i);
                     const justMatch = calcText.match(/CALCULATION_JUSTIFICATION:\s*(.*)/i);
 
@@ -730,21 +712,16 @@ Classification and Justification:`;
                 userPrompt = userPrompt.replace(new RegExp(`{${key.replace(/_/g, ' ')}}`, 'g'), data[key]);
             }
             
-            const payload = {
-                contents: [{ parts: [{ text: userPrompt }] }],
-                systemInstruction: { parts: [{ text: finalSystemPrompt }] },
-                model: GEMINI_MODEL 
-            };
-            
             try {
-                // NOTE: Using the API_URL defined globally which now includes the API Key
-                const response = await fetchWithBackoff(API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                const response = await gemini.generateContent({
+                    model: GEMINI_MODEL,
+                    contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+                    config: {
+                        systemInstruction: finalSystemPrompt
+                    }
                 });
 
-                const text = response.candidates?.[0]?.content?.parts?.[0]?.text;
+                const text = response.text || '';
                 if (text) {
                     document.getElementById('generated-output').value = text.trim();
                     document.getElementById('output-section').classList.remove('hidden');
@@ -754,7 +731,7 @@ Classification and Justification:`;
                 }
             } catch (error) {
                 console.error('Generation Error:', error);
-                showAlert(`An error occurred during document generation. Due to Wix/browser security restrictions (CORS), you must use a proxy server. Please update API_URL to your deployed proxy. Details: ${error.message}`, 'error');
+                showAlert(`An error occurred during document generation. Check your API key and console for details.`, 'error');
             } finally {
                 toggleLoading(false);
             }
