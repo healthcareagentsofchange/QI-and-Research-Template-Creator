@@ -107,9 +107,14 @@
                     <!-- Form content will be injected here by JavaScript -->
                     <div id="form-inputs"></div>
                     
-                    <button type="button" id="generate-button" class="w-full mt-6 bg-primary-blue text-white py-3 px-6 rounded-lg font-semibold hover:bg-opacity-90 transition duration-150">
-                        Generate Full Protocol/Application
-                    </button>
+                    <div class="mt-6 flex flex-col sm:flex-row gap-4">
+                        <button type="button" id="back-to-classification-1" class="flex-1 bg-gray-400 text-white py-3 px-6 rounded-lg font-semibold hover:bg-gray-500 transition duration-150">
+                            Back to Classification
+                        </button>
+                        <button type="button" id="generate-button" class="flex-1 bg-primary-blue text-white py-3 px-6 rounded-lg font-semibold hover:bg-opacity-90 transition duration-150">
+                            <!-- Text set dynamically in JS -->
+                        </button>
+                    </div>
                 </form>
             </section>
 
@@ -145,9 +150,14 @@
                         <textarea id="analysis-type" rows="2" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold" placeholder="E.g., Independent samples t-test, Chi-square test, ANOVA, Cox Regression." required></textarea>
                     </div>
 
-                    <button id="calculate-and-generate-button" class="w-full mt-4 bg-primary-blue text-white py-3 px-6 rounded-lg font-semibold hover:bg-opacity-90 transition duration-150">
-                        Calculate Sample Size & Generate Full Protocol
-                    </button>
+                    <div class="mt-6 flex flex-col sm:flex-row gap-4">
+                        <button type="button" id="back-to-classification-2" class="flex-1 bg-gray-400 text-white py-3 px-6 rounded-lg font-semibold hover:bg-gray-500 transition duration-150">
+                            Back to Classification
+                        </button>
+                        <button id="calculate-and-generate-button" class="flex-1 bg-primary-blue text-white py-3 px-6 rounded-lg font-semibold hover:bg-opacity-90 transition duration-150">
+                            Calculate Sample Size & Generate Full Protocol
+                        </button>
+                    </div>
                 </div>
             </section>
 
@@ -458,6 +468,27 @@ PHI (Data Management and Protection Plan): {PHI PLAN}
 
         // --- WORKFLOW FUNCTIONS ---
 
+        /**
+         * Resets the view to the initial classification screen.
+         */
+        function goBackToClassification() {
+            document.getElementById('protocol-form-section').classList.add('hidden');
+            document.getElementById('power-analysis-section').classList.add('hidden');
+            document.getElementById('output-section').classList.add('hidden'); // Hide output if user goes back
+            
+            document.getElementById('classification-section').classList.remove('hidden');
+            document.getElementById('classification-result').classList.add('hidden');
+            
+            projectType = ''; // Reset project type
+            researchData = {}; // Clear cached data
+            
+            // Optionally clear classification inputs if user needs to start fresh
+            // document.getElementById('project-goal').value = '';
+            // document.getElementById('project-method').value = '';
+
+            document.getElementById('project-goal').focus();
+        }
+
         async function classifyProject() {
             // (Same implementation as before)
             const goal = document.getElementById('project-goal').value.trim();
@@ -523,6 +554,7 @@ Classification and Justification:`;
             document.getElementById('classification-section').classList.add('hidden');
             document.getElementById('protocol-form-section').classList.remove('hidden');
             document.getElementById('power-analysis-section').classList.add('hidden'); // Ensure power section is hidden
+            document.getElementById('output-section').classList.add('hidden'); // Hide output if revisiting this step
             document.getElementById('form-inputs').innerHTML = '';
 
             const titleElement = document.getElementById('form-title');
@@ -540,7 +572,6 @@ Classification and Justification:`;
 
             // Adjust button based on project type
             const generateButton = document.getElementById('generate-button');
-            const calculateButton = document.getElementById('calculate-and-generate-button');
             
             if (projectType === 'Research') {
                 // For research, the first 'Generate' button now moves to the Power Analysis section
@@ -567,6 +598,7 @@ Classification and Justification:`;
 
             document.getElementById('protocol-form-section').classList.add('hidden');
             document.getElementById('power-analysis-section').classList.remove('hidden');
+            document.getElementById('output-section').classList.add('hidden'); // Hide output if revisiting this step
         }
 
         async function generateProtocol() {
@@ -749,10 +781,19 @@ Classification and Justification:`;
             const calculateAndGenerateButton = document.getElementById('calculate-and-generate-button');
             const copyButton = document.getElementById('copy-button');
             const downloadButton = document.getElementById('download-button');
+            
+            // New back buttons
+            const backButton1 = document.getElementById('back-to-classification-1');
+            const backButton2 = document.getElementById('back-to-classification-2');
+
 
             classifyButton.addEventListener('click', classifyProject);
             continueButton.addEventListener('click', startProtocolForm);
             
+            // Event listeners for the back buttons
+            backButton1.addEventListener('click', goBackToClassification);
+            backButton2.addEventListener('click', goBackToClassification);
+
             // Note: generateButton's event listener is set dynamically in startProtocolForm
             calculateAndGenerateButton.addEventListener('click', generateProtocol);
             copyButton.addEventListener('click', () => copyToClipboard('generated-output'));
