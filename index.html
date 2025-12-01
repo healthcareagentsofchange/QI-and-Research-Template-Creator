@@ -189,8 +189,9 @@
     <script type="module">
         // Global Constants
         const GEMINI_MODEL = "gemini-2.5-flash-preview-09-2025";
-        const API_KEY = ""; // Canvas will inject API Key at runtime if left blank
-        const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${API_KEY}`;
+        // REMOVED API_KEY usage from client-side for security and CORS compliance in hosted environments.
+        // Use a proxy server (e.g., /api/gemini-proxy) to handle the API key securely.
+        const API_URL = "/api/gemini-proxy"; 
         const MAX_RETRIES = 5;
 
         // --- TEMPLATES ---
@@ -345,9 +346,21 @@ PHI (Data Management and Protection Plan): {PHI PLAN}
                 try {
                     const response = await fetch(url, options);
                     if (!response.ok) {
+                        // Attempt to read error message from body if available
                         const errorBody = await response.text();
                         console.error('API Error:', response.status, errorBody);
-                        throw new Error(`API call failed with status ${response.status}`);
+                        
+                        // Throw a detailed error for better console diagnostics
+                        let errorMessage = `API call failed with status ${response.status}.`;
+                        if (errorBody) {
+                            try {
+                                const errorJson = JSON.parse(errorBody);
+                                errorMessage += ` Details: ${errorJson.error?.message || errorJson.error || errorBody}`;
+                            } catch {
+                                errorMessage += ` Response Body: ${errorBody.substring(0, 100)}...`;
+                            }
+                        }
+                        throw new Error(errorMessage);
                     }
                     return await response.json();
                 } catch (error) {
@@ -516,6 +529,8 @@ Classification and Justification:`;
             const payload = {
                 contents: [{ parts: [{ text: userQuery }] }],
                 systemInstruction: { parts: [{ text: systemPrompt }] },
+                // Add model property for proxy to identify target model
+                model: GEMINI_MODEL 
             };
 
             try {
@@ -545,7 +560,7 @@ Classification and Justification:`;
             } catch (error) {
                 console.error('Classification Error:', error);
                 // Modified error message for better external hosting diagnostics
-                showAlert('API Request failed. This may be due to a CORS policy, network issue, or missing API key in your hosting environment (Wix). Please check the browser console (Network/Security tabs) for details.', 'error');
+                showAlert(`API Request failed. This is likely due to CORS/network security policies in Wix. You must configure a proxy server at ${API_URL}. Details: ${error.message}`, 'error');
             } finally {
                 toggleLoading(false);
             }
@@ -646,7 +661,7 @@ Classification and Justification:`;
                     const calcResponse = await fetchWithBackoff(API_URL, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ contents: [{ parts: [{ text: calculationPrompt }] }], systemInstruction: { parts: [{ text: 'You are a clinical statistician. Do not output anything other than the CALCULATED_N and CALCULATION_JUSTIFICATION in the requested format.'}] }})
+                        body: JSON.stringify({ contents: [{ parts: [{ text: calculationPrompt }] }], systemInstruction: { parts: [{ text: 'You are a clinical statistician. Do not output anything other than the CALCULATED_N and CALCULATION_JUSTIFICATION in the requested format.'}] }, model: GEMINI_MODEL})
                     });
 
                     const calcText = calcResponse.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -712,7 +727,8 @@ Classification and Justification:`;
             
             const payload = {
                 contents: [{ parts: [{ text: userPrompt }] }],
-                systemInstruction: { parts: [{ text: finalSystemPrompt }] } // Fixed: Removed extraneous ']'
+                systemInstruction: { parts: [{ text: finalSystemPrompt }] },
+                model: GEMINI_MODEL 
             };
             
             try {
@@ -732,7 +748,7 @@ Classification and Justification:`;
                 }
             } catch (error) {
                 console.error('Generation Error:', error);
-                showAlert('An error occurred during document generation. Check console for details.', 'error');
+                showAlert(`An error occurred during document generation. This is likely due to CORS/network security policies in Wix. You must configure a proxy server at ${API_URL}. Details: ${error.message}`, 'error');
             } finally {
                 toggleLoading(false);
             }
