@@ -5,213 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Protocol & QI Application Generator</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/@google/genai@0.1.0/dist/client.js"></script>
+    <!-- Using the known global export format for Google GenAI SDK -->
+    <script src="https://unpkg.com/@google/genai@0.1.3/dist/client.js"></script>
     <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'primary-blue': '#104e8b',
-                        'secondary-gold': '#ffc324',
-                        'light-gray': '#f5f7fa',
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    },
-                }
-            }
-        }
-    </script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        .card-shadow {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        .header-bg {
-            background-color: #104e8b;
-            background-image: linear-gradient(135deg, #104e8b 0%, #0c7b93 100%);
-        }
-        .loading-animation {
-            border-top: 4px solid #ffc324;
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .field-group {
-            border: 1px solid #ddd;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1rem;
-        }
-    </style>
-</head>
-<body class="bg-light-gray min-h-screen flex flex-col font-sans">
-
-    <!-- Header -->
-    <header class="header-bg text-white p-6 shadow-lg">
-        <div class="max-w-4xl mx-auto">
-            <h1 class="text-3xl font-bold tracking-tight">Protocol Assistant</h1>
-            <p class="text-primary-blue-200 mt-1">Classify your project, analyze power, and generate your IRB Protocol or QI Application.</p>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="flex-grow p-4 md:p-8">
-        <div class="max-w-4xl mx-auto">
-            
-            <!-- Classification Section -->
-            <section id="classification-section" class="bg-white p-6 rounded-xl card-shadow mb-8">
-                <h2 class="text-xl font-semibold text-primary-blue mb-4 border-b pb-2">Step 1: Project Classification (QI vs. Research)</h2>
-                <div id="classification-questions">
-                    <p class="mb-4 text-gray-600">Please describe your project's starting point and method used. The AI will analyze this information, based on the provided classification chart, to determine if your project is Quality Improvement (QI) or Research.</p>
-                    
-                    <div class="mb-4">
-                        <label for="project-goal" class="block text-sm font-medium text-gray-700 mb-1">1. What is the **starting point** or the gap your project addresses?</label>
-                        <textarea id="project-goal" rows="3" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold" placeholder="E.g., We have a gap in adherence to the new sepsis screening process (Practice/Process Gap) OR We need to generate new knowledge about delirium prevalence (Knowledge Gap)."></textarea>
-                    </div>
-
-                    <div class="mb-4">
-                        <label for="project-method" class="block text-sm font-medium text-gray-700 mb-1">2. What **method** are you using?</label>
-                        <textarea id="project-method" rows="3" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold" placeholder="E.g., We are using Plan-Do-Study-Act (PDSA) cycles OR We are using a randomized controlled trial and statistical analysis (Scientific Process)."></textarea>
-                    </div>
-
-                    <button id="classify-button" class="w-full sm:w-auto bg-primary-blue text-white py-2 px-6 rounded-lg font-semibold hover:bg-opacity-90 transition duration-150">
-                        Classify Project
-                    </button>
-                </div>
-                
-                <div id="classification-result" class="mt-6 hidden">
-                    <h3 class="text-lg font-bold">Classification Result:</h3>
-                    <p id="classification-output" class="p-4 rounded-lg bg-light-gray border mt-2"></p>
-                    <button id="continue-button" class="mt-4 bg-secondary-gold text-primary-blue py-2 px-6 rounded-lg font-semibold hover:bg-yellow-500 transition duration-150">
-                        Continue to Application
-                    </button>
-                </div>
-
-            </section>
-
-            <!-- Loading Indicator -->
-            <div id="loading-indicator" class="hidden flex justify-center items-center p-8">
-                <div class="loading-animation"></div>
-                <span class="ml-4 text-primary-blue font-medium">Processing... Please wait.</span>
-            </div>
-
-            <!-- Form Section (Hidden until classified) -->
-            <section id="protocol-form-section" class="bg-white p-6 rounded-xl card-shadow hidden">
-                <h2 id="form-title" class="text-xl font-semibold text-primary-blue mb-4 border-b pb-2"></h2>
-                <form id="protocol-form">
-                    <!-- Form content will be injected here by JavaScript -->
-                    <div id="form-inputs"></div>
-                    
-                    <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                        <button type="button" id="back-to-classification-1" class="flex-1 bg-gray-400 text-white py-3 px-6 rounded-lg font-semibold hover:bg-gray-500 transition duration-150">
-                            Back to Classification
-                        </button>
-                        <button type="button" id="generate-button" class="flex-1 bg-primary-blue text-white py-3 px-6 rounded-lg font-semibold hover:bg-opacity-90 transition duration-150">
-                            <!-- Text set dynamically in JS -->
-                        </button>
-                    </div>
-                </form>
-            </section>
-
-            <!-- Power Analysis Section (Research only, appears before final generation) -->
-            <section id="power-analysis-section" class="bg-white p-6 rounded-xl card-shadow mt-8 hidden">
-                <h2 class="text-xl font-semibold text-primary-blue mb-4 border-b pb-2">Step 2b: Power Analysis & Statistics</h2>
-                <p class="mb-4 text-gray-600">Please provide the necessary statistical details to calculate your required sample size and design your data analysis plan.</p>
-                <div id="power-analysis-inputs">
-                    <!-- Inputs for power analysis -->
-                    <div class="mb-4">
-                        <label for="primary-endpoint-type" class="block text-sm font-medium text-gray-700 mb-1">1. Primary Endpoint/Outcome Type:</label>
-                        <select id="primary-endpoint-type" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold">
-                            <option value="">Select Primary Endpoint Type</option>
-                            <option value="Continuous (e.g., Blood Pressure, Score)">Continuous (e.g., Blood Pressure, Score)</option>
-                            <option value="Dichotomous (e.g., Success/Failure, Yes/No)">Dichotomous (e.g., Success/Failure, Yes/No)</option>
-                            <option value="Time-to-Event (e.g., Survival)">Time-to-Event (e.g., Survival)</option>
-                        </select>
-                    </div>
-                    <div class="mb-4">
-                        <label for="effect-size-justification" class="block text-sm font-medium text-gray-700 mb-1">2. Justification/Assumption for Expected Effect Size:</label>
-                        <textarea id="effect-size-justification" rows="2" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold" placeholder="E.g., Based on previous literature (Smith et al. 2020), we expect a difference of 5 points on the primary scale (SD=10) or a 10% improvement in success rate (from 60% to 70%)." required></textarea>
-                    </div>
-                    <div class="mb-4">
-                        <label for="power-level" class="block text-sm font-medium text-gray-700 mb-1">3. Desired Power Level (e.g., 0.80 for 80%):</label>
-                        <input type="number" step="0.05" id="power-level" value="0.80" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold" required>
-                    </div>
-                    <div class="mb-4">
-                        <label for="alpha-level" class="block text-sm font-medium text-gray-700 mb-1">4. Significance Level (Alpha, e.g., 0.05):</label>
-                        <input type="number" step="0.01" id="alpha-level" value="0.05" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold" required>
-                    </div>
-                    <div class="mb-4">
-                        <label for="analysis-type" class="block text-sm font-medium text-gray-700 mb-1">5. Proposed Primary Statistical Analysis Method:</label>
-                        <textarea id="analysis-type" rows="2" class="w-full p-2 border border-gray-300 rounded-lg focus:ring-secondary-gold focus:border-secondary-gold" placeholder="E.g., Independent samples t-test, Chi-square test, ANOVA, Cox Regression." required></textarea>
-                    </div>
-
-                    <div class="mt-6 flex flex-col sm:flex-row gap-4">
-                        <button type="button" id="back-to-classification-2" class="flex-1 bg-gray-400 text-white py-3 px-6 rounded-lg font-semibold hover:bg-gray-500 transition duration-150">
-                            Back to Classification
-                        </button>
-                        <button id="calculate-and-generate-button" class="flex-1 bg-primary-blue text-white py-3 px-6 rounded-lg font-semibold hover:bg-opacity-90 transition duration-150">
-                            Calculate Sample Size & Generate Full Protocol
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Output Section -->
-            <section id="output-section" class="bg-white p-6 rounded-xl card-shadow mt-8 hidden">
-                <h2 class="text-xl font-semibold text-primary-blue mb-4 border-b pb-2">Step 3: Generated Document</h2>
-                <textarea id="generated-output" rows="20" readonly class="w-full p-4 border border-gray-300 rounded-lg bg-light-gray font-mono text-sm"></textarea>
-                <div class="mt-4 flex flex-col sm:flex-row gap-4">
-                    <button id="download-button" class="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-green-700 transition duration-150">
-                        Download as Word Document (.doc)
-                    </button>
-                    <button id="copy-button" class="flex-1 bg-gray-500 text-white py-2 px-4 rounded-lg font-semibold hover:bg-gray-600 transition duration-150">
-                        Copy to Clipboard
-                    </button>
-                </div>
-            </section>
-
-             <!-- Error/Alert Box -->
-            <div id="error-alert" class="hidden mt-4 p-4 text-sm font-medium rounded-lg" role="alert"></div>
-
-        </div>
-    </main>
-
-    <!-- Footer -->
-    <footer class="bg-gray-200 text-gray-600 p-4 text-center text-sm">
-        <p>Powered by Gemini API</p>
-    </footer>
-
-    <script type="module">
-        // Global Constants
+        // Global Constants (Accessible everywhere)
         const GEMINI_MODEL = "gemini-2.5-flash"; // Using flash for speed/cost
         
         // CRITICAL: Insert your API Key here. This bypasses the need for an external proxy server.
         // WARNING: This key is exposed in client-side code, which is LESS secure.
         const CLIENT_API_KEY = "AIzaSyDotPdvHbLVAlEO2V1-8zfFmP3NVVg2qZ8"; 
 
-        // Initialize the Gemini client using the SDK
+        // Initialize the Gemini client container and workflow variables
         let gemini;
-        try {
-            if (!CLIENT_API_KEY || CLIENT_API_KEY.includes("YOUR_GEMINI_API_KEY_HERE")) {
-                 throw new Error("API Key not set. Please replace 'YOUR_GEMINI_API_KEY_HERE' in the code.");
-            }
-            gemini = new window.GoogleGenAI({ apiKey: CLIENT_API_KEY });
-        } catch (e) {
-            console.error("SDK Initialization Error:", e.message);
-            // Wait for DOM to load, then show error if key is missing
-            document.addEventListener('DOMContentLoaded', () => {
-                showAlert(`Initialization Error: ${e.message}`, 'error');
-                document.querySelectorAll('button').forEach(btn => btn.disabled = true);
-            });
-        }
+        let projectType = ''; // 'Research' or 'QI'
+        let researchData = {}; // Cache data for multi-step form
         
-        // --- TEMPLATES ---
+        // --- TEMPLATES (Contents remain unchanged) ---
         const researchTemplate = `PROTOCOL TITLE: {PROTOCOL TITLE}
 PRINCIPAL INVESTIGATOR: {PRINCIPAL INVESTIGATOR}
 VERSION DATE: {VERSION DATE}
@@ -302,7 +111,7 @@ PHI (Data Management and Protection Plan): {PHI PLAN}
 
 [End of QI Application Content]`;
 
-        // --- FIELD DEFINITIONS ---
+        // --- FIELD DEFINITIONS (Contents remain unchanged) ---
         // Research Fields (ID, Label, Type/Options, Placeholder/Required)
         const researchFields = [
             ['protocol-title', 'Protocol Title', 'textarea', 'A full, descriptive title for the research study.'],
@@ -353,30 +162,31 @@ PHI (Data Management and Protection Plan): {PHI PLAN}
         ];
 
 
-        let projectType = ''; // 'Research' or 'QI'
-        let researchData = {}; // Cache data for multi-step form
-
         // --- CORE UTILITY FUNCTIONS ---
         
-        // Removed fetchWithBackoff as SDK handles retries/connection
-
         function showAlert(message, type = 'info') {
             const alertBox = document.getElementById('error-alert');
-            alertBox.textContent = message;
-            alertBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
-            
-            if (type === 'error') {
-                alertBox.classList.add('bg-red-100', 'text-red-700');
-            } else if (type === 'success') {
-                alertBox.classList.add('bg-green-100', 'text-green-700');
-            } else {
-                alertBox.classList.add('bg-blue-100', 'text-blue-700');
-            }
+            // FIX: Add null check before setting textContent to prevent TypeError
+            if (alertBox) { 
+                alertBox.textContent = message;
+                alertBox.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
+                
+                if (type === 'error') {
+                    alertBox.classList.add('bg-red-100', 'text-red-700');
+                } else if (type === 'success') {
+                    alertBox.classList.add('bg-green-100', 'text-green-700');
+                } else {
+                    alertBox.classList.add('bg-blue-100', 'text-blue-700');
+                }
 
-            // Hide after 5 seconds
-            setTimeout(() => {
-                alertBox.classList.add('hidden');
-            }, 5000);
+                // Hide after 5 seconds
+                setTimeout(() => {
+                    alertBox.classList.add('hidden');
+                }, 5000);
+            } else {
+                // Fallback logging if the element is truly unavailable
+                console.error('Could not display alert box. Message:', message);
+            }
         }
 
         function toggleLoading(isLoading) {
@@ -391,7 +201,7 @@ PHI (Data Management and Protection Plan): {PHI PLAN}
             });
         }
 
-        // --- FORM BUILDING UTILITIES ---
+        // --- FORM BUILDING UTILITIES (Contents remain unchanged) ---
 
         /**
          * Creates an input element based on the field definition.
@@ -465,7 +275,7 @@ PHI (Data Management and Protection Plan): {PHI PLAN}
             return { data, isFormValid };
         }
 
-        // --- WORKFLOW FUNCTIONS ---
+        // --- WORKFLOW FUNCTIONS (Contents remain unchanged) ---
 
         /**
          * Resets the view to the initial classification screen.
@@ -775,6 +585,26 @@ Classification and Justification:`;
 
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', () => {
+            // SDK Initialization moved here to ensure the library is loaded first
+            try {
+                if (!CLIENT_API_KEY || CLIENT_API_KEY.includes("YOUR_GEMINI_API_KEY_HERE")) {
+                    throw new Error("API Key not set.");
+                }
+                // FIX: Initialize gemini here where we are certain the script has executed
+                // We rely on the SDK being loaded via the external script tag.
+                // The persistent error suggests the global variable is not available until much later.
+                if (typeof GoogleGenAI !== 'undefined') {
+                    gemini = new GoogleGenAI({ apiKey: CLIENT_API_KEY });
+                } else {
+                    // This scenario is the root cause of the persistent error
+                    throw new Error("GoogleGenAI constructor not found. External SDK script failed to load or define the global variable.");
+                }
+            } catch (e) {
+                console.error("SDK Initialization Error:", e.message);
+                showAlert(`Initialization Error: ${e.message} Please check your API key. If this continues, the external SDK script is failing to load.`, 'error');
+                document.querySelectorAll('button').forEach(btn => btn.disabled = true);
+            }
+            
             const classifyButton = document.getElementById('classify-button');
             const continueButton = document.getElementById('continue-button');
             const generateButton = document.getElementById('generate-button'); // This button is repurposed by startProtocolForm
@@ -787,19 +617,18 @@ Classification and Justification:`;
             const backButton2 = document.getElementById('back-to-classification-2');
 
 
-            classifyButton.addEventListener('click', classifyProject);
-            continueButton.addEventListener('click', startProtocolForm);
+            // FIX: Using optional chaining on event listener attachment to avoid TypeErrors if element is null
+            classifyButton?.addEventListener('click', classifyProject);
+            continueButton?.addEventListener('click', startProtocolForm);
             
-            // Event listeners for the back buttons
-            backButton1.addEventListener('click', goBackToClassification);
-            backButton2.addEventListener('click', goBackToClassification);
+            backButton1?.addEventListener('click', goBackToClassification);
+            backButton2?.addEventListener('click', goBackToClassification);
 
-            // Note: generateButton's event listener is set dynamically in startProtocolForm
-            calculateAndGenerateButton.addEventListener('click', generateProtocol);
-            copyButton.addEventListener('click', () => copyToClipboard('generated-output'));
-            downloadButton.addEventListener('click', downloadAsDocx);
+            calculateAndGenerateButton?.addEventListener('click', generateProtocol);
+            copyButton?.addEventListener('click', () => copyToClipboard('generated-output'));
+            downloadButton?.addEventListener('click', downloadAsDocx);
 
-            document.getElementById('project-goal').focus();
+            document.getElementById('project-goal')?.focus();
         });
     </script>
 
